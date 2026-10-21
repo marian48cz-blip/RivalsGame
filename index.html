@@ -1,0 +1,55 @@
+trol
+
+@onready var name_field:   LineEdit = $Panel/VBox/NameField
+@onready var host_btn:     Button   = $Panel/VBox/HostBtn
+@onready var join_btn:     Button   = $Panel/VBox/JoinBtn
+@onready var solo_btn:     Button   = $Panel/VBox/SoloBtn
+@onready var ip_field:     LineEdit = $Panel/VBox/IPField
+@onready var port_field:   LineEdit = $Panel/VBox/PortField
+@onready var status_label: Label    = $Panel/VBox/StatusLabel
+
+func _ready() -> void:
+	NetworkManager.connection_failed.connect(_on_connection_failed)
+	NetworkManager.player_connected.connect(_on_player_connected)
+	host_btn.pressed.connect(_on_host_pressed)
+	join_btn.pressed.connect(_on_join_pressed)
+	solo_btn.pressed.connect(_on_solo_pressed)
+	name_field.text = "Player%d" % randi_range(100, 999)
+
+func _on_host_pressed() -> void:
+	_set_name()
+	var port := int(port_field.text) if port_field.text.is_valid_int() else 7777
+	var err := NetworkManager.host_game(port)
+	if err == OK:
+		status_label.text = "Hosting on port %d..." % port
+		status_label.modulate = Color.GREEN
+		get_tree().change_scene_to_file("res://scenes/lobby.tscn")
+	else:
+		status_label.text = "Failed to host!"
+		status_label.modulate = Color.RED
+
+func _on_join_pressed() -> void:
+	_set_name()
+	var ip := ip_field.text.strip_edges()
+	if ip.is_empty():
+		ip = "127.0.0.1"
+	var port := int(port_field.text) if port_field.text.is_valid_int() else 7777
+	status_label.text = "Connecting to %s:%d..." % [ip, port]
+	status_label.modulate = Color.YELLOW
+	NetworkManager.join_game(ip, port)
+
+func _on_solo_pressed() -> void:
+	_set_name()
+	get_tree().change_scene_to_file("res://scenes/training_map.tscn")
+
+func _on_connection_failed() -> void:
+	status_label.text = "Connection failed!"
+	status_label.modulate = Color.RED
+
+func _on_player_connected(_id: int, _info: Dictionary) -> void:
+	if NetworkManager.get_my_id() != 1:
+		get_tree().change_scene_to_file("res://scenes/lobby.tscn")
+
+func _set_name() -> void:
+	var n := name_field.text.strip_edges()
+	NetworkManager.local_player_name = n if not n.is_empty() else "Player"
